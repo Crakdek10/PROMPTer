@@ -6,7 +6,6 @@ export class SttService {
   private readonly ws = inject(SttWsClient);
 
   readonly messages$ = this.ws.messages$;
-  readonly status$ = this.ws.status$;
 
   async connect(): Promise<void> {
     await this.ws.connectAsync(6000);
@@ -14,16 +13,27 @@ export class SttService {
 
   start(
     sessionId: string,
-    sttConfig: { provider?: string; language?: string; sample_rate?: number; format?: string } = {}
+    sttConfig: {
+      provider?: string;
+      language?: string;
+      sample_rate?: number;
+      format?: string;
+      partial_every_s?: number;
+      partial_window_s?: number;
+      partial_min_window_s?: number;
+    } = {}
   ): void {
     const config: Record<string, unknown> = {
-      provider: sttConfig.provider ?? "cloud_stub",
+      provider: sttConfig.provider ?? "whisper_selfhosted",
       language: sttConfig.language ?? "es",
       sample_rate: sttConfig.sample_rate ?? 16000,
       format: sttConfig.format ?? "pcm16",
-      partial_every_s: 1.5,
-      partial_min_audio_s: 1.0,
+
+      partial_every_s: sttConfig.partial_every_s ?? 1.6,
+      partial_window_s: sttConfig.partial_window_s ?? 6.0,
+      partial_min_window_s: sttConfig.partial_min_window_s ?? 2.0,
     };
+
 
     this.ws.start(sessionId, config);
   }

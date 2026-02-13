@@ -1,10 +1,10 @@
 import { patchState, signalStore, withMethods, withState } from "@ngrx/signals";
 import { inject } from "@angular/core";
-import { AudioCaptureService, CaptureMode } from "../services/audio/audio-capture.service";
+import { AudioCaptureService } from "../services/audio/audio-capture.service";
 import { SttService } from "../services/stt.service";
-import { pcm16ToBase64 } from "../utils/audio-b64";
 import { SettingsStore } from "./settings.store";
 import { ChatStore } from "./chat.store";
+import { pcm16ToBase64 } from "../utils/audio-b64";
 
 export type SessionStatus = "idle" | "recording" | "paused" | "processing";
 
@@ -41,47 +41,24 @@ export const SessionStore = signalStore(
 
         const s: any = settings.settings();
 
-        // --- modo captura ---
-        const mode: CaptureMode = (s?.sttUi?.captureMode ?? "mic") as CaptureMode;
+        // SOLO SYSTEM AUDIO
         const systemSourceId: string | null = s?.sttUi?.selectedSystemSourceId ?? null;
-
-        // Si pide system/both pero no eligió fuente
-        if ((mode === "system" || mode === "both") && !systemSourceId) {
-          const id = chat.addSystemError("Elige una fuente de audio del sistema en Settings.");
-          patchState(store, { status: "idle", sessionId: null, systemMsgId: null });
+        if (!systemSourceId) {
+          chat.addSystemError("Elige una fuente de audio del sistema en Settings.");
           return;
         }
 
-        // 1) conectar WS
+        // 1) conectar WS (espera OPEN)
         await stt.connect();
 
         const sessionId = uid();
         patchState(store, { status: "recording", sessionId });
 
-        // 2) start STT
-        stt.start(sessionId, {
-          provider: s?.stt?.provider ?? "whisper_selfhosted",
-          language: s?.language?.appLanguage ?? "es",
-          sample_rate: 16000,
-          format: "pcm16",
-        });
-
-
-        // 5) start captura
-        await audio.start(
-          (pcm16, sr) => {
-            const b64 = pcm16ToBase64(pcm16);
-            stt.sendAudioChunk(b64, sr);
-          },
-          16000,
-          { mode, systemSourceId: systemSourceId ?? undefined }
-        );
-
-        // 3) mensaje streaming en chat
+        // 2) crear mensaje streaming ANTES para que existan updates desde ya
         const systemMsgId = chat.addSystemStreaming("Escuchando…", sessionId);
         patchState(store, { systemMsgId });
 
-        // 4) escuchar mensajes WS
+        // 3) subscribe WS ANTES de start (por si llega ready/partial rápido)
         sub = stt.messages$.subscribe((m: any) => {
           if (m.type === "partial") {
             chat.updateText(systemMsgId, m.text, "streaming");
@@ -100,6 +77,23 @@ export const SessionStore = signalStore(
           }
         });
 
+        // 4) start STT
+        stt.start(sessionId, {
+          provider: s?.stt?.provider ?? "whisper_selfhosted",
+          language: s?.language?.appLanguage ?? "es",
+          sample_rate: 16000,
+          format: "pcm16",
+        });
+
+        // 5) función onChunk (envía audio a WS)
+        const onChunk = (pcm16: Int16Array, sampleRate: number) => {
+          if (store.status() !== "recording") return;
+          const b64 = pcm16ToBase64(pcm16);
+          stt.sendAudioChunk(b64, sampleRate);
+        };
+
+        // 6) start captura (SYSTEM)
+        await audio.start(onChunk, 16000, { mode: "system", systemSourceId });
       },
 
       async stopSession() {
@@ -107,10 +101,10 @@ export const SessionStore = signalStore(
 
         patchState(store, { status: "processing" });
 
-        // stop captura
+        // stop captura primero
         await audio.stop();
 
-        // stop STT (el backend cerrará WS luego del final)
+        // stop STT (backend mandará final y cerrará)
         stt.stop();
       },
 

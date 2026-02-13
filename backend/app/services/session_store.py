@@ -66,3 +66,17 @@ class SessionStore:
         if not sess:
             return b""
         return bytes(sess.audio_bytes)
+    
+    def snapshot_last_seconds(self, session_id: str, seconds: float, sample_rate: int, channels: int = 1) -> bytes:
+            sess = self.get(session_id)
+            if not sess:
+                return b""
+            if seconds <= 0 or sample_rate <= 0 or channels <= 0:
+                return bytes(sess.audio_bytes)
+        
+            bytes_per_second = sample_rate * channels * 2  # pcm16
+            n = int(seconds * bytes_per_second)
+            data = sess.audio_bytes
+            if n <= 0 or n >= len(data):
+                return bytes(data)
+            return bytes(data[-n:])
