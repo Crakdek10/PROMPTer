@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, inject } from "@angular/core";
 import { SessionStore } from "../../../../core/stores/session.store";
+import { ChatStore } from "../../../../core/stores/chat.store";
 
 @Component({
   selector: "app-bottom-controls",
@@ -8,6 +9,7 @@ import { SessionStore } from "../../../../core/stores/session.store";
 })
 export class BottomControlsComponent {
   private readonly session = inject(SessionStore);
+  public readonly chat = inject(ChatStore);
 
   @Input() isRunning = false;
   @Output() stop = new EventEmitter<void>();

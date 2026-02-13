@@ -43,12 +43,10 @@ async def ws_stt(websocket: WebSocket) -> None:
 
             sess2 = _store.get(sid)
             if not sess2:
-                return  # Termina si la sesión ya no existe
+                return 
 
             sr = int((sess2.config or {}).get("sample_rate") or 16000)
 
-            # SOLUCIÓN 1: Tomamos TODO el audio acumulado en lugar de solo los últimos segundos.
-            # Esto permite que el texto crezca progresivamente en el frontend.
             snap = _store.snapshot_audio(sid)
             if not snap:
                 continue
@@ -117,14 +115,24 @@ async def ws_stt(websocket: WebSocket) -> None:
                         pass
                     partial_task = None
 
-                new_session_id, out_messages, should_close = await _stt_router.handle(msg, session_id)
-                session_id = new_session_id if new_session_id else session_id
+                if session_id:
+                    sess2 = _store.get(session_id)
+                    if sess2:
+                        provider = _stt_router._pick_provider(sess2.config)
+                        if hasattr(provider, "transcribe_pcm"):
+                            snap = _store.snapshot_audio(session_id)
+                            if snap:
+                                try:
+                                    final_text = await provider.transcribe_pcm(snap, sess2.config)
+                                    final_text = (final_text or "").strip()
+                                    if final_text:
+                                        await send({"type": "final", "session_id": session_id, "text": final_text})
+                                except Exception:
+                                    pass
+                    
+                    _store.close(session_id)
 
-                for out in out_messages:
-                    await send(out)
-
-                if should_close:
-                    await websocket.close()
+                await websocket.close()
                 return
 
             await send({"type": "error", "message": "Unknown message type", "session_id": session_id or ""})

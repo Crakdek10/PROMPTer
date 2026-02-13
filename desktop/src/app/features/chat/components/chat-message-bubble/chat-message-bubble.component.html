@@ -29,9 +29,8 @@
     </div>
 
     <!-- ACCIONES -->
-    <div class="mt-2 flex items-center gap-3 opacity-60 hover:opacity-100 transition-opacity">
-      <!-- COPY -->
-      <button type="button" class="hover:text-white cursor-pointer" title="Copiar" (click)="onCopy()">
+    <div class="mt-2 flex items-center gap-3">
+      <button type="button" class="opacity-40 hover:opacity-100 hover:text-white transition-all cursor-pointer" title="Copiar" (click)="onCopy()">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
@@ -39,9 +38,8 @@
         </svg>
       </button>
 
-      <!-- SYSTEM: GENERAR + TRADUCIR -->
       @if (author === 'system') {
-        <button type="button" class="hover:text-white cursor-pointer" title="Generar" (click)="onGenerate()">
+        <button type="button" class="opacity-40 hover:opacity-100 hover:text-white transition-all cursor-pointer" title="Generar" (click)="onGenerate()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/>
@@ -49,7 +47,7 @@
           </svg>
         </button>
 
-        <button type="button" class="hover:text-white cursor-pointer" title="Traducir" (click)="onTranslate()">
+        <button type="button" class="opacity-40 hover:opacity-100 hover:text-white transition-all cursor-pointer" title="Traducir" (click)="onTranslate()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
@@ -58,9 +56,8 @@
         </button>
       }
 
-      <!-- AI: FORWARD -->
       @if (author === 'ai') {
-        <button type="button" class="hover:text-white cursor-pointer" title="Enviar al teleprompter" (click)="onForward()">
+        <button type="button" class="opacity-40 hover:opacity-100 hover:text-white transition-all cursor-pointer" title="Enviar al teleprompter" (click)="onForward()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>
@@ -68,8 +65,7 @@
         </button>
       }
 
-      <!-- STAR (user + system + ai si quieres) -->
-      <button type="button" class="hover:text-white cursor-pointer" title="Favorito" (click)="onStar()">
+      <button type="button" class="opacity-40 hover:opacity-100 hover:text-white transition-all cursor-pointer" title="Favorito" (click)="onStar()">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
              [attr.fill]="message.favorite ? 'currentColor' : 'none'"
              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

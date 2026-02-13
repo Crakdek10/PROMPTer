@@ -17,6 +17,10 @@ export class ChatStore {
     private readonly settings: SettingsStore,
   ) {}
 
+  clear() {
+    this.messages.set([]);
+  }
+
   add(author: ChatAuthor, text: string) {
     const msg: ChatMessage = {
       id: uid(),
