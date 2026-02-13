@@ -1,8 +1,11 @@
 from __future__ import annotations
 from fastapi import APIRouter
+
 from app.providers.stt.cloud_stub import CloudStubSTTProvider
 from app.providers.stt.custom_ws_proxy import CustomWSProxySTTProvider
 from app.providers.stt.whisper_selfhosted import WhisperSelfHostedSTTProvider
+from app.providers.stt.whisper_cpp import WhisperCppSTTProvider
+
 from app.providers.llm.openai_compat import OpenAICompatLLMProvider
 from app.providers.llm.gemini import GeminiLLMProvider
 
@@ -17,6 +20,12 @@ def list_stt_providers() -> dict:
             "type": "stt",
             "status": "ready",
             "description": "Mock realista (partial por chunk, final cada 3).",
+        },
+        {
+            "name": WhisperCppSTTProvider.name,
+            "type": "stt",
+            "status": "ready",
+            "description": "Whisper.cpp en VM (pcm16 → wav → main).",
         },
         {
             "name": CustomWSProxySTTProvider.name,

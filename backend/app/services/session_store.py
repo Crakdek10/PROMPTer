@@ -1,14 +1,18 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
+
 
 @dataclass
 class STTSession:
     session_id: str
     config: dict[str, Any]
     audio_chunks: int = 0
-    created_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    audio_buf: bytearray = field(default_factory=bytearray)
+
 
 class SessionStore:
     def __init__(self) -> None:
@@ -38,3 +42,17 @@ class SessionStore:
             raise ValueError("Send 'start' first")
         sess.audio_chunks += 1
         return sess.audio_chunks
+
+    def append_audio(self, session_id: str, chunk: bytes) -> None:
+        sess = self.get(session_id)
+        if not sess:
+            raise ValueError("Send 'start' first")
+        sess.audio_buf.extend(chunk)
+
+    def pop_audio(self, session_id: str) -> bytes:
+        sess = self.get(session_id)
+        if not sess:
+            return b""
+        data = bytes(sess.audio_buf)
+        sess.audio_buf.clear()
+        return data

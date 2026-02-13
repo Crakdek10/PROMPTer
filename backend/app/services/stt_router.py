@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Optional
+
 from app.services.session_store import SessionStore
 from app.utils.ws_protocol import b64_to_bytes
 from app.utils.validate import (
@@ -13,6 +14,8 @@ from app.providers.stt.base import STTAudioFrame, STTProvider
 from app.providers.stt.cloud_stub import CloudStubSTTProvider
 from app.providers.stt.custom_ws_proxy import CustomWSProxySTTProvider
 from app.providers.stt.whisper_selfhosted import WhisperSelfHostedSTTProvider
+from app.providers.stt.whisper_cpp import WhisperCppSTTProvider
+
 
 class STTRouter:
     def __init__(self, store: SessionStore) -> None:
@@ -22,6 +25,8 @@ class STTRouter:
             CloudStubSTTProvider.name: CloudStubSTTProvider(),
             CustomWSProxySTTProvider.name: CustomWSProxySTTProvider(),
             WhisperSelfHostedSTTProvider.name: WhisperSelfHostedSTTProvider(),
+            # ✅ nuevo
+            WhisperCppSTTProvider.name: WhisperCppSTTProvider(self.store),
         }
 
         self._audio_constraints = DEFAULT_AUDIO_CONSTRAINTS
