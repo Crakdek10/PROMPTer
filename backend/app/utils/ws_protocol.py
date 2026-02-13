@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Any, Literal, TypedDict, NotRequired, Optional, List
+
 import base64
+from typing import Any, Literal, Optional, TypedDict
+from typing_extensions import NotRequired
 
 ClientMsgType = Literal["start", "audio", "stop"]
 ServerMsgType = Literal["ready", "partial", "final", "error"]
