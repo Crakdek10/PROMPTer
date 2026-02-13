@@ -1,13 +1,13 @@
-import {Component, OnInit, inject, signal} from '@angular/core';
-import {SettingsStore} from '../../../../core/stores/settings.store';
+import { Component, OnInit, inject, signal } from "@angular/core";
+import { SettingsStore } from "../../../../core/stores/settings.store";
 
 type SystemSource = { id: string; name: string };
 type MicDevice = { deviceId: string; label: string };
 
 @Component({
-  selector: 'app-settings-sound',
+  selector: "app-settings-sound",
   standalone: true,
-  templateUrl: './settings-sound.component.html',
+  templateUrl: "./settings-sound.component.html",
 })
 export class SettingsSoundComponent implements OnInit {
   private readonly settings = inject(SettingsStore);
@@ -20,11 +20,11 @@ export class SettingsSoundComponent implements OnInit {
   }
 
   get selectedMicId(): string {
-    return this.s.sttUi.selectedMicId ?? '';
+    return this.s?.sttUi?.selectedMicId ?? "";
   }
 
   get selectedSystemSourceId(): string {
-    return this.s.sttUi.selectedSystemSourceId ?? '';
+    return this.s?.sttUi?.selectedSystemSourceId ?? "";
   }
 
   async ngOnInit() {
@@ -33,28 +33,35 @@ export class SettingsSoundComponent implements OnInit {
   }
 
   async refreshMics() {
-    await navigator.mediaDevices.getUserMedia({audio: true}).catch(() => null);
+    // Pide permiso para que aparezcan labels de micrófonos
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach((t) => t.stop());
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     this.micDevices.set(
       devices
-        .filter(d => d.kind === 'audioinput')
-        .map(d => ({deviceId: d.deviceId, label: d.label || 'Micrófono (sin nombre)'}))
+        .filter((d) => d.kind === "audioinput")
+        .map((d) => ({ deviceId: d.deviceId, label: d.label || "Micrófono (sin nombre)" }))
     );
   }
 
   async refreshSystemSources() {
-    this.systemSources.set(await window.prompter.listSystemAudioSources());
+    if (!window.prompter?.listSystemAudioSources) {
+      this.systemSources.set([]);
+      return;
+    }
+    const sources = await window.prompter.listSystemAudioSources();
+    this.systemSources.set(sources);
   }
 
   onMicChange(deviceId: string) {
-    this.settings.updateDeep(st => {
+    this.settings.updateDeep((st) => {
       st.sttUi.selectedMicId = deviceId || null;
     });
   }
 
   onSystemSourceChange(sourceId: string) {
-    this.settings.updateDeep(st => {
+    this.settings.updateDeep((st) => {
       st.sttUi.selectedSystemSourceId = sourceId || null;
     });
   }

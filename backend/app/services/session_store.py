@@ -11,6 +11,12 @@ class STTSession:
     audio_bytes: bytearray = field(default_factory=bytearray)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    # --- NUEVO: parciales ---
+    partial_running: bool = False
+    partial_dirty: bool = False
+    last_partial_text: str = ""
+    last_partial_at: float = 0.0
+
 class SessionStore:
     def __init__(self) -> None:
         self._sessions: dict[str, STTSession] = {}
@@ -53,3 +59,10 @@ class SessionStore:
         data = bytes(sess.audio_bytes)
         sess.audio_bytes.clear()
         return data
+
+    # --- NUEVO: snapshot sin vaciar (para parciales) ---
+    def snapshot_audio(self, session_id: str) -> bytes:
+        sess = self.get(session_id)
+        if not sess:
+            return b""
+        return bytes(sess.audio_bytes)

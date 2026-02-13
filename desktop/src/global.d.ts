@@ -1,7 +1,5 @@
 export {};
 
-type SystemSource = { id: string; name: string };
-
 declare global {
   interface Window {
     prompter: {
@@ -10,8 +8,7 @@ declare global {
       maximize: () => void;
       close: () => void;
 
-      // NUEVO
-      listSystemAudioSources: () => Promise<SystemSource[]>;
+      listSystemAudioSources: () => Promise<Array<{ id: string; name: string }>>;
       setWindowOpacity: (value01: number) => void;
     };
   }

@@ -25,6 +25,7 @@ class STTRouter:
             CloudStubSTTProvider.name: CloudStubSTTProvider(),
             CustomWSProxySTTProvider.name: CustomWSProxySTTProvider(),
             WhisperSelfHostedSTTProvider.name: WhisperSelfHostedSTTProvider(self.store),
+            WhisperCppSTTProvider.name: WhisperCppSTTProvider(self.store),
         }
 
 

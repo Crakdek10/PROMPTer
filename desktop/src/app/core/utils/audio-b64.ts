@@ -1,9 +1,6 @@
-export function pcm16ToBase64(pcm: Int16Array): string {
-  const bytes = new Uint8Array(pcm.buffer);
+export function pcm16ToBase64(pcm16: Int16Array): string {
+  const u8 = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
   let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
   return btoa(bin);
 }

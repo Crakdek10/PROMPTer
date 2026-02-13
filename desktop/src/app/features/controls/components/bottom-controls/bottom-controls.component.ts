@@ -1,18 +1,22 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from "@angular/core";
+import { SessionStore } from "../../../../core/stores/session.store";
 
 @Component({
-  selector: 'app-bottom-controls',
+  selector: "app-bottom-controls",
   standalone: true,
-  templateUrl: './bottom-controls.component.html',
-  host: { class: 'block w-full' },
+  templateUrl: "./bottom-controls.component.html",
 })
 export class BottomControlsComponent {
-  /** true cuando está grabando/procesando (no idle) */
+  private readonly session = inject(SessionStore);
+
   @Input() isRunning = false;
-
-  /** click al play/pause */
-  @Output() togglePlay = new EventEmitter<void>();
-
-  /** click stop */
   @Output() stop = new EventEmitter<void>();
+
+  async toggleRec() {
+    if (this.isRunning) {
+      await this.session.stopSession();
+    } else {
+      await this.session.startSession();
+    }
+  }
 }

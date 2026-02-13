@@ -1,11 +1,11 @@
 from __future__ import annotations
-
 import os
 import shutil
 import tempfile
 import subprocess
+import asyncio
+import time
 from typing import Any, Optional
-
 from app.core.config import get_settings
 from app.providers.stt.base import STTAudioFrame, STTProvider
 from app.services.session_store import SessionStore
@@ -91,6 +91,51 @@ class WhisperSelfHostedSTTProvider(STTProvider):
 
         return None
 
+    async def _transcribe_pcm_to_text(self, pcm: bytes, config: dict[str, Any]) -> str:
+        sample_rate = int(config.get("sample_rate") or 16000)
+        wav_bytes = pcm16_to_wav_bytes(pcm, sample_rate=sample_rate, channels=1)
+    
+        whisper_bin = self._pick_bin(config)
+        whisper_model = self._pick_model(config)
+        lang = self._pick_lang(config)
+    
+        # TIP: para parciales usa un modelo más rápido si quieres (base/small)
+        with tempfile.TemporaryDirectory(prefix="prompter_whisper_partial_") as td:
+            wav_path = os.path.join(td, "audio.wav")
+            with open(wav_path, "wb") as f:
+                f.write(wav_bytes)
+    
+            out_prefix = os.path.join(td, "out")
+    
+            cmd = [
+                whisper_bin,
+                "-m", whisper_model,
+                "-f", wav_path,
+                "-otxt",
+                "-of", out_prefix,
+            ]
+            if lang:
+                cmd.extend(["-l", lang])
+    
+            proc = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+    
+            if proc.returncode != 0:
+                # en parciales, no mates la sesión por fallos puntuales
+                return ""
+    
+            txt_file = out_prefix + ".txt"
+            try:
+                with open(txt_file, "r", encoding="utf-8", errors="ignore") as f:
+                    return f.read().strip()
+            except FileNotFoundError:
+                return (proc.stdout or "").strip()
+    
+
     async def on_start(self, session_id: str, config: dict[str, Any]) -> list[dict[str, Any]]:
         _ = self._pick_bin(config)
         _ = self._pick_model(config)
@@ -105,11 +150,60 @@ class WhisperSelfHostedSTTProvider(STTProvider):
     async def on_audio(self, frame: STTAudioFrame, config: dict[str, Any]) -> list[dict[str, Any]]:
         self.store.append_audio(frame.session_id, frame.audio_bytes)
 
-        return [{
-            "type": "partial",
-            "session_id": frame.session_id,
-            "text": f"(whisper.cpp) recibiendo audio… chunk={frame.chunk_index}",
-        }]
+        sess = self.store.get(frame.session_id)
+        if not sess:
+            return []
+    
+        # Config “rápida” para parciales
+        partial_every_s = float(config.get("partial_every_s") or 1.5)
+        min_audio_s = float(config.get("partial_min_audio_s") or 1.0)
+    
+        now = time.monotonic()
+    
+        # si ya hay un job corriendo, marcamos dirty y salimos
+        if sess.partial_running:
+            sess.partial_dirty = True
+            return []
+    
+        # throttle
+        if sess.last_partial_at and (now - sess.last_partial_at) < partial_every_s:
+            return []
+    
+        # requerir mínimo audio acumulado para que valga la pena
+        pcm_snapshot = self.store.snapshot_audio(frame.session_id)
+        if not pcm_snapshot:
+            return []
+    
+        sample_rate = int(config.get("sample_rate") or 16000)
+        seconds = len(pcm_snapshot) / (sample_rate * 2)  # pcm16 mono
+        if seconds < min_audio_s:
+            return []
+    
+        # lanzar partial async (NO bloquea el WS receive loop)
+        sess.partial_running = True
+        sess.last_partial_at = now
+    
+        async def run_partial():
+            try:
+                text = await self._transcribe_pcm_to_text(pcm_snapshot, config)
+                text = (text or "").strip()
+    
+                # evita spam del mismo texto
+                if text and text != sess.last_partial_text:
+                    sess.last_partial_text = text
+                    return [{"type": "partial", "session_id": frame.session_id, "text": text}]
+                return []
+            finally:
+                sess.partial_running = False
+    
+        out = await run_partial()
+    
+        # si mientras corría llegaron más chunks, dispara otro parcial “pronto”
+        if sess.partial_dirty:
+            sess.partial_dirty = False
+            # no lo forces inmediato; el próximo on_audio lo tomará
+    
+        return out
 
     async def on_stop(self, session_id: str, config: dict[str, Any]) -> list[dict[str, Any]]:
         pcm = self.store.pop_audio(session_id)

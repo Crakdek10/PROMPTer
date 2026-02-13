@@ -60,10 +60,10 @@
 
     <!-- BOTTOM (ya no se afecta nunca por el drawer) -->
     <app-bottom-controls
-      [isRunning]="isRunning()"
-      (togglePlay)="onTogglePlay()"
-      (stop)="onStop()">
-    </app-bottom-controls>
+      [isRunning]="sessionStore.status() === 'recording'"
+      (stop)="sessionStore.stopSession()"
+    ></app-bottom-controls>
+
 
   </div>
 </div>

@@ -1,6 +1,5 @@
 import { Injectable, inject } from "@angular/core";
 import { SttWsClient } from "./clients/stt.ws.client";
-import { ServerMessage } from "../models/stt-ws.model";
 
 @Injectable({ providedIn: "root" })
 export class SttService {
@@ -9,16 +8,21 @@ export class SttService {
   readonly messages$ = this.ws.messages$;
   readonly status$ = this.ws.status$;
 
-  connect(): void {
-    this.ws.connect();
+  async connect(): Promise<void> {
+    await this.ws.connectAsync(6000);
   }
 
-  start(sessionId: string, sttConfig: { provider?: string; language?: string; sample_rate?: number; format?: string } = {}): void {
+  start(
+    sessionId: string,
+    sttConfig: { provider?: string; language?: string; sample_rate?: number; format?: string } = {}
+  ): void {
     const config: Record<string, unknown> = {
       provider: sttConfig.provider ?? "cloud_stub",
       language: sttConfig.language ?? "es",
       sample_rate: sttConfig.sample_rate ?? 16000,
       format: sttConfig.format ?? "pcm16",
+      partial_every_s: 1.5,
+      partial_min_audio_s: 1.0,
     };
 
     this.ws.start(sessionId, config);
