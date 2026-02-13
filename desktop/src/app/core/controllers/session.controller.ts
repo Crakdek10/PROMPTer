@@ -21,6 +21,12 @@ export class SessionController {
 
   constructor() {
     this.sttWs.messages$.subscribe(m => this.onSttMsg(m));
+
+    this.sttWs.status$.subscribe(status => {
+      if (status === "disconnected" && this.session.status() !== "idle") {
+        this.forceStop();
+      }
+    });
   }
 
   togglePlay() {
@@ -37,13 +43,10 @@ export class SessionController {
 
     this.session.startSession();
 
-    // 1) connect WS
     this.sttWs.connect();
 
-    // 2) esperar connected
     await firstValueFrom(this.sttWs.status$.pipe(filter(x => x === "connected")));
 
-    // 3) mandar start
     const sttConfig: Record<string, unknown> = {
       provider: s.selectedSttProviderId,
       sample_rate: s.stt.sampleRate,
@@ -52,16 +55,22 @@ export class SessionController {
     };
 
     this.sttWs.start(this.sessionId, sttConfig);
-
   }
 
   stop() {
     if (this.session.status() !== "recording") return;
-    this.session.setProcessing();
+    this.session.setProcessing(); // Cambia a "Generando respuesta..."
 
     try { this.audio.stop(); } catch {}
     try { this.sttWs.stop(); } catch {}
-    // el server cerrará el ws por protocolo, o queda abierto
+  }
+
+  // Helper para resetear toda la UI y la captura de forma segura
+  private forceStop() {
+    this.audioRunning = false;
+    this.streamingMsgId = null;
+    try { this.audio.stop(); } catch {}
+    this.session.stopSession();
   }
 
   private async startAudioIfNeeded(sampleRate: number) {
@@ -75,7 +84,8 @@ export class SessionController {
   }
 
   private onSttMsg(m: any) {
-    // ✅ READY: recién aquí arrancamos audio
+    if (m.session_id && m.session_id !== this.sessionId) return;
+
     if (m.type === "ready") {
       const s = this.settings.settings();
       this.startAudioIfNeeded(s.stt.sampleRate);
@@ -84,7 +94,7 @@ export class SessionController {
 
     if (m.type === "partial") {
       if (!this.streamingMsgId) {
-        this.streamingMsgId = this.chat.add("system", m.text); // por ahora simple
+        this.streamingMsgId = this.chat.addSystemStreaming(m.text, this.sessionId);
       } else {
         this.chat.updateText(this.streamingMsgId, m.text, "streaming");
       }
@@ -93,20 +103,17 @@ export class SessionController {
 
     if (m.type === "final") {
       if (!this.streamingMsgId) {
-        this.chat.add("system", m.text);
+        this.chat.addSystemFinal(m.text, this.sessionId);
       } else {
         this.chat.updateText(this.streamingMsgId, m.text, "final");
-        this.streamingMsgId = null;
       }
-      this.audioRunning = false;
-      this.session.stopSession();
+      this.forceStop();
       return;
     }
 
     if (m.type === "error") {
-      this.chat.add("system", `❌ ${m.message ?? "STT error"}`);
-      this.audioRunning = false;
-      this.session.stopSession();
+      this.chat.addSystemError(`❌ ${m.message ?? "STT error"}`, this.sessionId);
+      this.forceStop();
     }
   }
 }

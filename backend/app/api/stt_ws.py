@@ -1,14 +1,12 @@
 from __future__ import annotations
 import asyncio
 import json
-import time
 from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.services.session_store import SessionStore
 from app.services.stt_router import STTRouter
-from app.providers.stt.whisper_selfhosted import WhisperSelfHostedSTTProvider
 
 router = APIRouter(tags=["stt"])
 
@@ -31,15 +29,12 @@ async def ws_stt(websocket: WebSocket) -> None:
             return
 
         config = sess.config or {}
-        provider = _stt_router._pick_provider(config)  # usamos el mismo provider elegido
+        provider = _stt_router._pick_provider(config)
 
-        # Solo soportamos parciales reales si el provider expone transcribe_pcm
-        # (en nuestro caso whisper_selfhosted)
         if not hasattr(provider, "transcribe_pcm"):
             return
 
-        every_s = float(config.get("partial_every_s") or 1.6)      # frecuencia
-        window_s = float(config.get("partial_window_s") or 6.0)    # últimos N segundos
+        every_s = float(config.get("partial_every_s") or 1.6)
         min_window_s = float(config.get("partial_min_window_s") or 2.0)
 
         last_text = ""
@@ -48,15 +43,16 @@ async def ws_stt(websocket: WebSocket) -> None:
 
             sess2 = _store.get(sid)
             if not sess2:
-                return
+                return  # Termina si la sesión ya no existe
 
             sr = int((sess2.config or {}).get("sample_rate") or 16000)
 
-            snap = _store.snapshot_last_seconds(sid, window_s, sr, channels=1)
+            # SOLUCIÓN 1: Tomamos TODO el audio acumulado en lugar de solo los últimos segundos.
+            # Esto permite que el texto crezca progresivamente en el frontend.
+            snap = _store.snapshot_audio(sid)
             if not snap:
                 continue
 
-            # evita transcribir si aún hay poquísimo audio
             seconds = len(snap) / (sr * 2)
             if seconds < min_window_s:
                 continue
@@ -67,7 +63,6 @@ async def ws_stt(websocket: WebSocket) -> None:
             except Exception:
                 text = ""
 
-            # manda partial solo si cambió y no está vacío
             if text and text != last_text:
                 last_text = text
                 await send({"type": "partial", "session_id": sid, "text": text})
@@ -83,12 +78,11 @@ async def ws_stt(websocket: WebSocket) -> None:
                 continue
 
             if not isinstance(msg, dict):
-                await send({"type": "error", "message": "Invalid message (must be object)"})
+                await send({"type": "error", "message": "Invalid message"})
                 continue
 
             msg_type = msg.get("type")
 
-            # START: crea sesión + arranca task de parciales
             if msg_type == "start":
                 new_session_id, out_messages, should_close = await _stt_router.handle(msg, session_id)
                 session_id = new_session_id if new_session_id else session_id
@@ -96,7 +90,6 @@ async def ws_stt(websocket: WebSocket) -> None:
                 for out in out_messages:
                     await send(out)
 
-                # arrancar partial loop solo cuando ya hay session_id válida
                 if session_id and partial_task is None:
                     partial_task = asyncio.create_task(partial_loop(session_id))
 
@@ -105,7 +98,6 @@ async def ws_stt(websocket: WebSocket) -> None:
                     return
                 continue
 
-            # AUDIO: pasa al router (que solo acumula)
             if msg_type == "audio":
                 new_session_id, out_messages, should_close = await _stt_router.handle(msg, session_id)
                 session_id = new_session_id if new_session_id else session_id
@@ -116,7 +108,6 @@ async def ws_stt(websocket: WebSocket) -> None:
                     return
                 continue
 
-            # STOP: cancela parciales + final + cierra
             if msg_type == "stop":
                 if partial_task:
                     partial_task.cancel()
