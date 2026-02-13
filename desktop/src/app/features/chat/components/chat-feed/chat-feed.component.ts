@@ -2,11 +2,12 @@ import { Component, inject, ElementRef, ViewChild, AfterViewChecked } from '@ang
 import { ChatStore } from '../../../../core/stores/chat.store';
 import { SessionStore } from '../../../../core/stores/session.store';
 import { ChatMessageBubbleComponent } from '../chat-message-bubble/chat-message-bubble.component';
+import {ChatPlaceholderComponent} from '../chat-placeholder/chat-placeholder.component';
 
 @Component({
   selector: 'app-chat-feed',
   standalone: true,
-  imports: [ChatMessageBubbleComponent],
+  imports: [ChatMessageBubbleComponent, ChatPlaceholderComponent],
   templateUrl: './chat-feed.component.html',
   styles: [`
     .scrollbar-thin::-webkit-scrollbar { width: 6px; }

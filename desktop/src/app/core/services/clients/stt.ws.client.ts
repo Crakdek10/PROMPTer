@@ -27,7 +27,9 @@ export class SttWsClient {
     }
 
     this._status$.next("connecting");
-    this.ws = new WebSocket(`${this.runtime.wsBaseUrl()}/ws/stt`);
+    const base = (this.runtime.wsBaseUrl() || "").replace(/\/+$/, "");
+    this.ws = new WebSocket(`${base}/ws/stt`);
+
 
     this.ws.onopen = () => this._status$.next("connected");
 

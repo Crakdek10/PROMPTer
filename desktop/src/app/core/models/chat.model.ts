@@ -1,5 +1,4 @@
 export type ChatAuthor = "user" | "ai" | "system";
-
 export type TranscriptKind = "partial" | "final";
 
 export interface TranscriptChunk {
@@ -17,7 +16,7 @@ export interface ChatMessage {
   text: string;
   createdAt: number;
   sessionId?: string | null;
-
-  kind?: TranscriptKind | "ai" | "system";
-  isStreaming?: boolean;
+  favorite?: boolean;
+  status?: "final" | "streaming" | "error";
+  transcriptKind?: TranscriptKind;
 }

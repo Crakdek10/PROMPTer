@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import {Component, computed, inject, signal} from '@angular/core';
 import { ChatPageComponent } from '../../../chat/pages/chat-page/chat-page.component';
 import { SessionStore } from '../../../../core/stores/session.store';
 import { BottomControlsComponent } from '../../../controls/components/bottom-controls/bottom-controls.component';
 import { SettingsDrawerComponent } from '../../../settings/components/settings-drawer/settings-drawer.component';
+import {SessionController} from '../../../../core/controllers/session.controller';
 
 @Component({
   selector: 'app-home-page',
@@ -11,12 +12,14 @@ import { SettingsDrawerComponent } from '../../../settings/components/settings-d
   templateUrl: './home-page.component.html',
 })
 export class HomePageComponent {
-  readonly sessionStore = inject(SessionStore);
+  private readonly controller = inject(SessionController);
+  private readonly session = inject(SessionStore);
 
   readonly collapsed = signal(false);
   readonly hoveringDrawer = signal(false);
   readonly isClosing = signal(false);
   readonly previewT = signal(0);
+  readonly isRunning = computed(() => this.session.status() === "recording");
 
   // tamaños
   readonly drawerW = 320;   // ancho abierto real
@@ -104,6 +107,6 @@ export class HomePageComponent {
     requestAnimationFrame(step);
   }
 
-  onTogglePlay() {}
-  onStop() {}
+  onTogglePlay() { this.controller.togglePlay(); }
+  onStop() { this.controller.stop(); }
 }

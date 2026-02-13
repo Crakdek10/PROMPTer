@@ -60,11 +60,10 @@
 
     <!-- BOTTOM (ya no se afecta nunca por el drawer) -->
     <app-bottom-controls
-      class="shrink-0 w-full"
-      [isRunning]="sessionStore.status() !== 'idle'"
+      [isRunning]="isRunning()"
       (togglePlay)="onTogglePlay()"
-      (stop)="onStop()"
-    ></app-bottom-controls>
+      (stop)="onStop()">
+    </app-bottom-controls>
 
   </div>
 </div>
