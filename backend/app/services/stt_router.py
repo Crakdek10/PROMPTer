@@ -24,10 +24,9 @@ class STTRouter:
         self._providers: dict[str, STTProvider] = {
             CloudStubSTTProvider.name: CloudStubSTTProvider(),
             CustomWSProxySTTProvider.name: CustomWSProxySTTProvider(),
-            WhisperSelfHostedSTTProvider.name: WhisperSelfHostedSTTProvider(),
-            # ✅ nuevo
-            WhisperCppSTTProvider.name: WhisperCppSTTProvider(self.store),
+            WhisperSelfHostedSTTProvider.name: WhisperSelfHostedSTTProvider(self.store),
         }
+
 
         self._audio_constraints = DEFAULT_AUDIO_CONSTRAINTS
 

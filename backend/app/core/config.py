@@ -1,6 +1,6 @@
 from __future__ import annotations
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     CORS_ORIGINS: List[str] = ["http://localhost:4200", "null"]
+
+    WHISPER_CPP_BIN: Optional[str] = None
+    WHISPER_CPP_MODEL: Optional[str] = None
+    WHISPER_CPP_LANG: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file="backend/.env",
